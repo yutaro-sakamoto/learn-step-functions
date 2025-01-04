@@ -4,6 +4,7 @@ import * as sfn from "aws-cdk-lib/aws-stepfunctions";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as tasks from "aws-cdk-lib/aws-stepfunctions-tasks";
+import * as logs from "aws-cdk-lib/aws-logs";
 
 /**
  * The first example of Step Functions
@@ -33,6 +34,14 @@ export class FirstExample extends Construct {
     new sfn.StateMachine(this, "StateMachine", {
       definition,
       timeout: cdk.Duration.minutes(5),
+      logs: {
+        destination: new logs.LogGroup(
+          this,
+          "FirstExampleStateMachineLogGroup",
+        ),
+        level: sfn.LogLevel.ALL,
+      },
+      tracingEnabled: true,
     });
   }
 }
