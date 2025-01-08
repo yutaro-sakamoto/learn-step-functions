@@ -29,10 +29,10 @@ export class FirstExample extends Construct {
       .when(sfn.Condition.stringEquals("$.status", "SUCCESS"), successState)
       .otherwise(failureState);
 
-    const definition = lambdaInvoke.next(choice);
-
     new sfn.StateMachine(this, "StateMachine", {
-      definition,
+      definitionBody: sfn.DefinitionBody.fromChainable(
+        lambdaInvoke.next(choice),
+      ),
       timeout: cdk.Duration.minutes(5),
       logs: {
         destination: new logs.LogGroup(

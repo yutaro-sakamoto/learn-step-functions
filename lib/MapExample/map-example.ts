@@ -43,7 +43,7 @@ export class MapExample extends Construct {
     const logGroup = new logs.LogGroup(this, "MapExampleLogGroup");
 
     new sfn.StateMachine(this, "StateMachine", {
-      definition: mapState,
+      definitionBody: sfn.DefinitionBody.fromChainable(mapState),
       timeout: cdk.Duration.minutes(5),
       logs: {
         destination: logGroup,
@@ -53,7 +53,7 @@ export class MapExample extends Construct {
     });
 
     new sfn.StateMachine(this, "DistStateMachine", {
-      definition: distMapState,
+      definitionBody: sfn.DefinitionBody.fromChainable(distMapState),
       timeout: cdk.Duration.minutes(5),
       logs: {
         destination: logGroup,
