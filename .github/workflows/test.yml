@@ -37,4 +37,9 @@ jobs:
           lib/*.ts bin/*.ts
 
       - name: Synthesize the CDK stack
-        run: npx cdk synth
+        run: |
+          npx cdk synth 2>&1 | tee synth-output.txt
+          if grep -q "[WARNING]" < synth-output.txt; then
+            echo "Error: CDK synth generated warnings"
+            exit 1
+          fi
