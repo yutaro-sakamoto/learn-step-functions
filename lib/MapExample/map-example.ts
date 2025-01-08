@@ -21,6 +21,11 @@ export class MapExample extends Construct {
       outputPath: "$.Payload",
     });
 
+    const distLambdaInvoke = new tasks.LambdaInvoke(this, "DistInvokeLambda", {
+      lambdaFunction: lambdaFunc,
+      outputPath: "$.Payload",
+    });
+
     const mapState = new sfn.Map(this, "MapState", {
       itemsPath: sfn.JsonPath.stringAt("$.items"),
       resultPath: sfn.JsonPath.DISCARD,
@@ -28,10 +33,27 @@ export class MapExample extends Construct {
 
     mapState.itemProcessor(lambdaInvoke);
 
+    const distMapState = new sfn.DistributedMap(this, "DistMapState", {
+      itemsPath: sfn.JsonPath.stringAt("$.items"),
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    distMapState.itemProcessor(distLambdaInvoke);
+
     const logGroup = new logs.LogGroup(this, "MapExampleLogGroup");
 
     new sfn.StateMachine(this, "StateMachine", {
       definition: mapState,
+      timeout: cdk.Duration.minutes(5),
+      logs: {
+        destination: logGroup,
+        level: sfn.LogLevel.ALL,
+      },
+      tracingEnabled: true,
+    });
+
+    new sfn.StateMachine(this, "DistStateMachine", {
+      definition: distMapState,
       timeout: cdk.Duration.minutes(5),
       logs: {
         destination: logGroup,
