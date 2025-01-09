@@ -5,6 +5,8 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as tasks from "aws-cdk-lib/aws-stepfunctions-tasks";
 import * as logs from "aws-cdk-lib/aws-logs";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import { NagSuppressions } from "cdk-nag";
 
 /**
  * The first example of Step Functions
@@ -26,6 +28,11 @@ export class MapExample extends Construct {
       outputPath: "$.Payload",
     });
 
+    const LambdaWriteToS3 = new tasks.LambdaInvoke(this, "LambdaWriteToS3", {
+      lambdaFunction: lambdaFunc,
+      outputPath: "$.Payload",
+    });
+
     const mapState = new sfn.Map(this, "MapState", {
       itemsPath: sfn.JsonPath.stringAt("$.items"),
       resultPath: sfn.JsonPath.DISCARD,
@@ -39,6 +46,28 @@ export class MapExample extends Construct {
     });
 
     distMapState.itemProcessor(distLambdaInvoke);
+
+    const bucket = new s3.Bucket(this, "Bucket", {
+      enforceSSL: true,
+    });
+
+    NagSuppressions.addResourceSuppressions(bucket, [
+      {
+        id: "AwsSolutions-S1",
+        reason: "This bucket is used for demonstration purposes only",
+      },
+    ]);
+
+    const writeToS3State = new sfn.DistributedMap(this, "WriteToS3State", {
+      itemsPath: sfn.JsonPath.stringAt("$.items"),
+      resultPath: sfn.JsonPath.stringAt("$.status"),
+      resultWriter: new sfn.ResultWriter({
+        bucket,
+        prefix: "output/",
+      }),
+    });
+
+    writeToS3State.itemProcessor(LambdaWriteToS3);
 
     const logGroup = new logs.LogGroup(this, "MapExampleLogGroup");
 
@@ -54,6 +83,16 @@ export class MapExample extends Construct {
 
     new sfn.StateMachine(this, "DistStateMachine", {
       definitionBody: sfn.DefinitionBody.fromChainable(distMapState),
+      timeout: cdk.Duration.minutes(5),
+      logs: {
+        destination: logGroup,
+        level: sfn.LogLevel.ALL,
+      },
+      tracingEnabled: true,
+    });
+
+    new sfn.StateMachine(this, "WriteToS3StateMachine", {
+      definitionBody: sfn.DefinitionBody.fromChainable(writeToS3State),
       timeout: cdk.Duration.minutes(5),
       logs: {
         destination: logGroup,
