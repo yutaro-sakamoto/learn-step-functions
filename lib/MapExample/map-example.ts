@@ -60,7 +60,9 @@ export class MapExample extends Construct {
 
     const writeToS3State = new sfn.DistributedMap(this, "WriteToS3State", {
       itemsPath: sfn.JsonPath.stringAt("$.items"),
-      resultPath: sfn.JsonPath.stringAt("$.status"),
+      resultSelector: {
+        status_abc: "$.status",
+      },
       resultWriter: new sfn.ResultWriter({
         bucket,
         prefix: "output/",
